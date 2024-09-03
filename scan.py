@@ -134,7 +134,7 @@ class DataVisualizationCSV:
         self.data: pd.DataFrame = pd.read_csv(self.file_path)
         self.max_freq = 1000
         self.reference_pressure = 20e-6  # 20 µPa in Pascals
-        self.epsilon = 1e-12  # For error: divide by zero encountered in log10
+        self.epsilon = 0 # 1e-12  # For error: divide by zero encountered in log10
         
         self.limited_frequencies, self.limited_magnitude = self._calculate_fft()
         self.actual_max_freq = round(self.limited_frequencies[-1], 1)
