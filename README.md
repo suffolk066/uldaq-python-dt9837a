@@ -5,7 +5,7 @@ This project demonstrates how to use the UL for Linux Python API with the DT9837
 * Ain0: (Reserved for HS13M131 Accelerometers, work in progress)
 * Ain1: EMM-82S-CTC Microphone
 
-## Features
+## Features (for demonstration purposes; results may not be accurate).
 * Data Acquisition: Collects analog input data from the connected sensors.
 * Data Filtering: Applies a high-pass filter to the acquired data to remove low-frequency noise.
 * FFT Analysis: Performs a Fast Fourier Transform (FFT) to convert the time-domain data into the frequency domain.
