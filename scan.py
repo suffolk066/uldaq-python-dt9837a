@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from uldaq import AInScanFlag, Range, AiInputMode, CouplingMode, get_daq_device_inventory, InterfaceType, DaqDevice, IepeMode, ScanOption, create_float_buffer, ScanStatus
+from scipy.signal import butter, filtfilt
 
 # Set channel: if you using only 1 sensor, connect sensor to ain0 and set both channel to 0 -> Example) LOW_CHANNEL = 0, HIGH_CHANNEL = 0
 # if you using 2+ sensor, connect ain0, ain1, ... ainn and set channel LOW_CHANNEL = 0, HIGH_CHANNEL = n
@@ -14,10 +15,10 @@ VIBRATION_SENSOR_SENSITIVITY = 0.09878
 NOISE_SENSOR_SENSITIVITY = 0.3
 
 # sample rate in samples per channel per second.
-RATE = 1000
+RATE = 2000
 
 # Set max measurement time
-MAX_MEASUREMENT_SECOND = 10
+MAX_MEASUREMENT_SECOND = 1
 
 # Save Option
 OUTPUT_PATH = 'output'
@@ -136,15 +137,30 @@ class DataVisualizationCSV:
         self.reference_pressure = 20e-6  # 20 µPa in Pascals
         self.epsilon = 0 # 1e-12  # For error: divide by zero encountered in log10
         
-        self.limited_frequencies, self.limited_magnitude = self._calculate_fft()
+        # Get FFT
+        self.filtered_data = self._apply_highpass_filter(self.data['channel_1_value']) # add highpath filter
+        self.limited_frequencies, self.limited_magnitude = self._calculate_fft(self.filtered_data)
         self.actual_max_freq = round(self.limited_frequencies[-1], 1)
+
+        # Convert to dB SPL
         self.db_spl_data = self._calculate_db_spl(self.data['channel_1_value'])
         self.db_spl_magnitude = self._calculate_db_spl(self.limited_magnitude)
 
-    def _calculate_fft(self):
+    def _apply_highpass_filter(self, data, cutoff=1.0, fs=1000.0, order=5):
+        def butter_highpass(cutoff, fs, order=5):
+            nyq = 0.5 * fs
+            normal_cutoff = cutoff / nyq
+            b, a = butter(order, normal_cutoff, btype='high', analog=False)
+            return b, a
+
+        b, a = butter_highpass(cutoff, fs, order=order)
+        filtered_data = filtfilt(b, a, data)
+        return filtered_data
+    
+    def _calculate_fft(self, data):
         sampling_rate = 1 / np.mean(np.diff(self.data['seconds']))
-        n = len(self.data['channel_1_value'])
-        fft_result = np.fft.fft(self.data['channel_1_value'])
+        n = len(data)
+        fft_result = np.fft.fft(data)
         frequencies = np.fft.fftfreq(n, d=1/sampling_rate)
 
         positive_frequencies = frequencies[:n // 2]
@@ -156,13 +172,19 @@ class DataVisualizationCSV:
     def _calculate_db_spl(self, value):
         return 20 * np.log10(np.abs(value) / self.reference_pressure + self.epsilon)
     
-    def _plot(self, x, y, title, xlabel, ylabel, file_suffix, color='blue', label=None):
+    def _plot(self, x, y, title, xlabel, ylabel, file_suffix, colors=None, labels=None):
         plt.figure(figsize=(12, 6))
-        plt.plot(x, y, color=color, label=label)
+
+        if isinstance(y, list):
+            for i in range(len(y)):
+                plt.plot(x, y[i], color=colors[i], label=labels[i])
+        else:
+            plt.plot(x, y, color=colors, label=labels)
+
         plt.title(title)
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
-        if label:
+        if labels:
             plt.legend()
         plt.grid(True)
 
@@ -170,13 +192,21 @@ class DataVisualizationCSV:
         plt.savefig(figure_name)
     
     def plot_sensor_data(self):
+        channels = [col for col in self.data.columns if 'channel_' in col]
+        colors = ['blue', 'green', 'red', 'purple']
+        labels = ['Accelerometers', 'Microphone']
+
+        y_values = [self.data[channel] for channel in channels]
+
         self._plot(
             self.data['seconds'], 
-            self.data['channel_1_value'], 
-            'Sensor Value Over Time', 
+            y_values, 
+            'Sensor Values Over Time', 
             'Time (Seconds)', 
-            'Sensor Value (mV)]', 
-            'output_data'
+            'Sensor Value (mV)', 
+            'output_data', 
+            colors=colors[:len(channels)],
+            labels=labels
         )
 
     def plot_fft(self):
@@ -187,7 +217,7 @@ class DataVisualizationCSV:
             'Frequency (Hz)', 
             'Magnitude', 
             'output_noise_fft', 
-            color='red'
+            colors='red'
         )
 
     def plot_db_spl(self):
@@ -198,7 +228,8 @@ class DataVisualizationCSV:
             'Time (Seconds)', 
             'dB SPL', 
             'output_noise_db_spl', 
-            label='Noise Sensor Data in dB SPL'
+            colors='red',
+            labels='Noise Sensor Data in dB SPL'
         )
 
     def plot_fft_db_spl(self):
@@ -209,7 +240,8 @@ class DataVisualizationCSV:
             'Frequency (Hz)', 
             'dB SPL Magnitude', 
             'output_noise_fft_db_spl', 
-            label='Noise Sensor Data in dB SPL'
+            colors='red',
+            labels='Noise Sensor Data in dB SPL'
         )
 
     def run(self):
