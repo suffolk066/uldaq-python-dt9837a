@@ -15,10 +15,10 @@ VIBRATION_SENSOR_SENSITIVITY = 0.09878
 NOISE_SENSOR_SENSITIVITY = 0.3
 
 # sample rate in samples per channel per second.
-RATE = 2000
+SAMPLE_RATE = 1000
 
 # Set max measurement time
-MAX_MEASUREMENT_SECOND = 1
+MAX_MEASUREMENT_SECOND = 5
 
 # Save Option
 OUTPUT_PATH = 'output'
@@ -36,7 +36,7 @@ class DataLogger():
         self.ai_config = self.ai_device.get_config()
         self.status = ScanStatus.IDLE
         self.data = None
-        self.sample_rate = None
+        self.actual_sample_rate = None
         self.timestamp = timestamp
         
         self.set_channel()
@@ -61,7 +61,7 @@ class DataLogger():
         self.data = create_float_buffer(channel_count, samples_per_channel) # len(data) = 2 * 1000 = 2000
 
         self.daq_device.connect()
-        self.sample_rate = self.ai_device.a_in_scan(LOW_CHANNEL, HIGH_CHANNEL, AiInputMode.SINGLE_ENDED, Range.BIP10VOLTS, samples_per_channel, RATE, ScanOption.CONTINUOUS, AInScanFlag.DEFAULT, self.data)
+        self.actual_sample_rate = self.ai_device.a_in_scan(LOW_CHANNEL, HIGH_CHANNEL, AiInputMode.SINGLE_ENDED, Range.BIP10VOLTS, samples_per_channel, SAMPLE_RATE, ScanOption.CONTINUOUS, AInScanFlag.DEFAULT, self.data)
 
     def get_csv_writer(self):
         # Create csv file
@@ -97,7 +97,7 @@ class DataLogger():
                     # Write data
                     self.csv_writer.writerow([elapsed_time, channel_0_value, channel_1_value])
                     # Process log
-                    sys.stdout.write(f'\nElapsed Time = {elapsed_time:.6f} | Actual scan rate = {self.sample_rate:.6f} | Current index = {index} | Scan count = {scan_count} | Total count = {total_count}')
+                    sys.stdout.write(f'\nElapsed Time = {elapsed_time:.6f} | Actual scan rate = {self.actual_sample_rate:.6f} | Current index = {index} | Scan count = {scan_count} | Total count = {total_count}')
 
                 if not MAX_MEASUREMENT_SECOND == 0:
                     if elapsed_time >= MAX_MEASUREMENT_SECOND:
@@ -107,7 +107,7 @@ class DataLogger():
                     # if MAX_MEASUREMENT_SECOND == 0 -> Set continous -> WIP
                     pass
 
-                next_sleep_time += 1.0 / RATE
+                next_sleep_time += 1.0 / SAMPLE_RATE
                 time.sleep(max(0, next_sleep_time - time.perf_counter()))
 
         except (ValueError, NameError, SyntaxError) as e:
@@ -131,11 +131,11 @@ class DataVisualizationCSV:
         self.timestamp = timestamp
         self.file_path = file_name or f'{os.path.join(OUTPUT_PATH, timestamp)}/{timestamp}_{CSV_NAME_FORMAT}'
         self.data: pd.DataFrame = pd.read_csv(self.file_path)
-        self.max_freq = 1000
+        self.max_freq = SAMPLE_RATE
         self.reference_pressure = 20e-6  # 20 µPa in Pascals
-        self.epsilon = 0 # 1e-12  # For error: divide by zero encountered in log10
+        self.epsilon = 1e-12  # For error: divide by zero encountered in log10
         self.highpass_cutoff = 1.5 # 1.5 Hz
-        self.nyquist_freq = 0.5 * RATE
+        self.nyquist_freq = 0.5 * SAMPLE_RATE
         
         # Get FFT
         self.filtered_data = self._apply_highpass_filter(self.data['channel_1_value']) # add highpath filter
