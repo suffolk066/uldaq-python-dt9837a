@@ -80,7 +80,6 @@ class DataLogger():
 
     def start_scan(self):
         try:
-            frame = 0
             start_time = time.time()
             next_sleep_time = time.perf_counter()
             elapsed_time = 0
@@ -98,8 +97,7 @@ class DataLogger():
                     # Write data
                     self.csv_writer.writerow([elapsed_time, channel_0_value, channel_1_value])
                     # Process log
-                    sys.stdout.write(f'\nElapsed Time = {elapsed_time:.6f} | Frame = {frame} | Actual scan rate = {self.sample_rate:.6f} | Current index = {index} | Scan count = {scan_count} | Total count = {total_count}')
-                    frame += 1
+                    sys.stdout.write(f'\nElapsed Time = {elapsed_time:.6f} | Actual scan rate = {self.sample_rate:.6f} | Current index = {index} | Scan count = {scan_count} | Total count = {total_count}')
 
                 if not MAX_MEASUREMENT_SECOND == 0:
                     if elapsed_time >= MAX_MEASUREMENT_SECOND:
