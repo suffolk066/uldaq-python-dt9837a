@@ -136,6 +136,8 @@ class DataVisualizationCSV:
         self.max_freq = 1000
         self.reference_pressure = 20e-6  # 20 µPa in Pascals
         self.epsilon = 0 # 1e-12  # For error: divide by zero encountered in log10
+        self.highpass_cutoff = 1.5 # 1.5 Hz
+        self.nyquist_freq = 0.5 * RATE
         
         # Get FFT
         self.filtered_data = self._apply_highpass_filter(self.data['channel_1_value']) # add highpath filter
@@ -146,14 +148,15 @@ class DataVisualizationCSV:
         self.db_spl_data = self._calculate_db_spl(self.data['channel_1_value'])
         self.db_spl_magnitude = self._calculate_db_spl(self.limited_magnitude)
 
-    def _apply_highpass_filter(self, data, cutoff=1.0, fs=1000.0, order=5):
-        def butter_highpass(cutoff, fs, order=5):
-            nyq = 0.5 * fs
-            normal_cutoff = cutoff / nyq
+    def _apply_highpass_filter(self, data):
+
+        def butter_highpass():
+            order = 5
+            normal_cutoff = self.highpass_cutoff / self.nyquist_freq
             b, a = butter(order, normal_cutoff, btype='high', analog=False)
             return b, a
 
-        b, a = butter_highpass(cutoff, fs, order=order)
+        b, a = butter_highpass()
         filtered_data = filtfilt(b, a, data)
         return filtered_data
     
@@ -166,7 +169,10 @@ class DataVisualizationCSV:
         positive_frequencies = frequencies[:n // 2]
         fft_magnitude = np.abs(fft_result)[:n // 2]
 
-        indices = positive_frequencies <= self.max_freq
+        if self.max_freq >= self.nyquist_freq:
+            indices = positive_frequencies <= self.nyquist_freq
+        else:
+            indices = positive_frequencies <= self.max_freq
         return positive_frequencies[indices], fft_magnitude[indices]
         
     def _calculate_db_spl(self, value):
