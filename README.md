@@ -3,7 +3,7 @@ https://github.com/mccdaq/uldaq
 This project demonstrates how to use the UL for Linux Python API with the DT9837A Data Logger to collect and analyze data from sensors. Specifically, it focuses on acquiring analog input from a connected microphone and accelerometer.
 
 ## Analog Inputs
-* Ain0: (Reserved for HS13M131 Accelerometers, work in progress)
+* Ain0: HS13M131 Accelerometers
 * Ain1: EMM-82S-CTC Microphone
 
 ## Features (for demonstration purposes; results may not be accurate).

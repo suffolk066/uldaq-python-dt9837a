@@ -11,14 +11,14 @@ LOW_CHANNEL = 0
 HIGH_CHANNEL = 1
 
 # Set sensitivity
-VIBRATION_SENSOR_SENSITIVITY = 0.09878
-NOISE_SENSOR_SENSITIVITY = 0.3
+ACCELEROMETER_SENSITIVITY = 0.09878
+MICROPHONE_SENSITIVITY = 0.3
 
 # sample rate in samples per channel per second.
 SAMPLE_RATE = 1000
 
 # Set max measurement time
-MAX_MEASUREMENT_SECOND = 5
+MAX_MEASUREMENT_SECOND = 10
 
 # Save Option
 OUTPUT_PATH = 'output'
@@ -46,8 +46,8 @@ class DataLogger():
     def set_channel(self):
         # Default Value: 1.0 volts per unit(V/unit)
         # Set sesitivity for V/Unit to mV/Unit
-        self.configure_channel(LOW_CHANNEL, VIBRATION_SENSOR_SENSITIVITY) # mV/g
-        self.configure_channel(HIGH_CHANNEL, NOISE_SENSOR_SENSITIVITY) # mV/Pa
+        self.configure_channel(LOW_CHANNEL, ACCELEROMETER_SENSITIVITY) # mV/g
+        self.configure_channel(HIGH_CHANNEL, MICROPHONE_SENSITIVITY) # mV/Pa
 
     def configure_channel(self, channel: int, sensitivity_value: float):
         self.ai_config.set_chan_iepe_mode(channel, IepeMode.ENABLED)
@@ -137,6 +137,9 @@ class DataVisualizationCSV:
         self.highpass_cutoff = 1.5 # 1.5 Hz
         self.nyquist_freq = 0.5 * SAMPLE_RATE
         
+        # Get Acceleration Data
+        self._calculate_acceleration()
+
         # Get FFT
         self.filtered_data = self._apply_highpass_filter(self.data['channel_1_value']) # add highpath filter
         self.limited_frequencies, self.limited_magnitude = self._calculate_fft(self.filtered_data)
@@ -177,83 +180,155 @@ class DataVisualizationCSV:
         value = np.maximum(np.abs(value), self.epsilon)
         return 20 * np.log10(value / self.reference_pressure)
     
-    def _plot(self, x, y, title, xlabel, ylabel, file_suffix, colors=None, labels=None):
+    def _calculate_acceleration(self):
+        self.data['channel_0_g'] = self.data['channel_0_value'] / ACCELEROMETER_SENSITIVITY
+        self.data['channel_0_mps2'] = self.data['channel_0_g'] * 9.81
+
+    def plot_all_in_one(self):
+        # Create subplots (2 x 3 grid)
+        fig, axs = plt.subplots(3, 2, figsize=(24, 12))
+        fig.suptitle(f'All Data Plots for {self.timestamp}', fontsize=16)
+
+        # Plot 1: Acceleration in G over Time
+        axs[0, 0].plot(self.data['seconds'], self.data['channel_0_g'], color='blue', label='Acceleration (G)')
+        axs[0, 0].set_title('Acceleration Over Time (G)')
+        axs[0, 0].set_xlabel('Time (Seconds)')
+        axs[0, 0].set_ylabel('Acceleration (G)')
+        axs[0, 0].legend()
+        axs[0, 0].grid(True)
+
+        # Plot 2: Acceleration in m/s² over Time
+        axs[0, 1].plot(self.data['seconds'], self.data['channel_0_mps2'], color='green', label='Acceleration (m/s²)')
+        axs[0, 1].set_title('Acceleration Over Time (m/s²)')
+        axs[0, 1].set_xlabel('Time (Seconds)')
+        axs[0, 1].set_ylabel('Acceleration (m/s²)')
+        axs[0, 1].legend()
+        axs[0, 1].grid(True)
+
+        # Plot 3: Microphone Data over Time
+        axs[1, 0].plot(self.data['seconds'], self.data['channel_1_value'], color='red', label='Microphone (Pa)')
+        axs[1, 0].set_title('Microphone Data Over Time')
+        axs[1, 0].set_xlabel('Time (Seconds)')
+        axs[1, 0].set_ylabel('Microphone Value (Pa)')
+        axs[1, 0].legend()
+        axs[1, 0].grid(True)
+
+        # Plot 4: FFT of Microphone Data
+        axs[1, 1].plot(self.limited_frequencies, self.limited_magnitude, color='purple')
+        axs[1, 1].set_title(f'Frequency Spectrum (0-{self.actual_max_freq} Hz)')
+        axs[1, 1].set_xlabel('Frequency (Hz)')
+        axs[1, 1].set_ylabel('Magnitude')
+        axs[1, 1].grid(True)
+
+        # Plot 5: Noise Sensor Data in dB SPL
+        axs[2, 0].plot(self.data['seconds'], self.db_spl_data, color='orange', label='Noise (dB SPL)')
+        axs[2, 0].set_title('Noise Sensor Data (dB SPL)')
+        axs[2, 0].set_xlabel('Time (Seconds)')
+        axs[2, 0].set_ylabel('dB SPL')
+        axs[2, 0].legend()
+        axs[2, 0].grid(True)
+
+        # Plot 6: Empty
+        axs[2, 1].axis('off')
+
+        plt.tight_layout(rect=[0, 0, 1, 0.96])
+        file_suffix = 'output_all_in_one'
+        figure_name = f'{os.path.join(OUTPUT_PATH, self.timestamp)}/{self.timestamp}_{file_suffix}.png'
+        plt.savefig(figure_name)
+        
+    #region single plot
+    def _plot_single_data(self, x, y, title, xlabel, ylabel, file_suffix, colors='blue', labels=None):
         plt.figure(figsize=(12, 6))
-
-        if isinstance(y, list):
-            for i in range(len(y)):
-                plt.plot(x, y[i], color=colors[i], label=labels[i])
-        else:
-            plt.plot(x, y, color=colors, label=labels)
-
+        plt.plot(x, y, color=colors, label=labels)
         plt.title(title)
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
         if labels:
             plt.legend()
         plt.grid(True)
-
         figure_name = f'{os.path.join(OUTPUT_PATH, self.timestamp)}/{self.timestamp}_{file_suffix}.png'
         plt.savefig(figure_name)
-    
-    def plot_sensor_data(self):
-        channels = [col for col in self.data.columns if 'channel_' in col]
-        colors = ['blue', 'green', 'red', 'purple']
-        labels = ['Accelerometers', 'Microphone']
 
-        y_values = [self.data[channel] for channel in channels]
-
-        self._plot(
+    #region accelerometer plot
+    def plot_accelerometer(self):
+        self._plot_single_data(
             self.data['seconds'], 
-            y_values, 
-            'Sensor Values Over Time', 
+            self.data['channel_0_g'], 
+            'Acceleration Values Data Over Time', 
+            'Time (Secodns)', 
+            'Acceleration (G)', 
+            'output_accelerometer_data',
+            labels='Acceleration (G)'
+        )
+
+    def plot_acceleration_mps2(self):
+        self._plot_single_data(
+            self.data['seconds'], 
+            self.data['channel_0_mps2'], 
+            'Acceleration Value Data Over Time (m/s²)', 
+            'Time (Secodns)', 
+            'Acceleration (m/s²)', 
+            'output_accelerometer_mps2_data',
+            labels='Acceleration (m/s²)'
+        )
+    #endregion
+
+    #region microphone plot
+    def plot_microphone_data(self):
+        self._plot_single_data(
+            self.data['seconds'], 
+            self.data['channel_1_value'], 
+            'Microphone Values Over Time', 
             'Time (Seconds)', 
-            'Sensor Value (mV)', 
-            'output_data', 
-            colors=colors[:len(channels)],
-            labels=labels
+            'Microphone Value (Pa)', 
+            'output_microphone_data', 
+            labels='Microphone (Pa)'
         )
 
     def plot_fft(self):
-        self._plot(
+        self._plot_single_data(
             self.limited_frequencies, 
             self.limited_magnitude, 
             f'Frequency Spectrum (0-{self.actual_max_freq} Hz)', 
             'Frequency (Hz)', 
             'Magnitude', 
-            'output_noise_fft', 
-            colors='red'
+            'output_microphone_fft', 
         )
 
     def plot_db_spl(self):
-        self._plot(
+        self._plot_single_data(
             self.data['seconds'], 
             self.db_spl_data, 
             'Noise Sensor Data Over Time (dB SPL)', 
             'Time (Seconds)', 
             'dB SPL', 
-            'output_noise_db_spl', 
-            colors='red',
+            'output_microphone_db_spl', 
             labels='Noise Sensor Data in dB SPL'
         )
 
     def plot_fft_db_spl(self):
-        self._plot(
+        self._plot_single_data(
             self.limited_frequencies, 
             self.db_spl_magnitude, 
             f'Noise Sensor Data in Frequency Domain (dB SPL, 0-{self.actual_max_freq} Hz)', 
             'Frequency (Hz)', 
             'dB SPL Magnitude', 
-            'output_noise_fft_db_spl', 
-            colors='red',
+            'output_microphone_fft_db_spl', 
             labels='Noise Sensor Data in dB SPL'
         )
+    #endregion
+    #endregion
 
     def run(self):
-        self.plot_sensor_data()
-        self.plot_fft()
-        self.plot_db_spl()
-        self.plot_fft_db_spl()
+        self.plot_all_in_one()
+
+        # If you want a single chart, use the function below.
+        # self.plot_accelerometer()
+        # self.plot_acceleration_mps2()
+        # self.plot_microphone_data()
+        # self.plot_fft()
+        # self.plot_db_spl()
+        # self.plot_fft_db_spl()
 
 if __name__ == '__main__':
     timestamp = get_timestamp()
