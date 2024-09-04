@@ -56,8 +56,12 @@ The script saves the collected and processed data to a CSV file in the output di
 Additionally, the script generates charts based on the sensor data, including:
 
 * Raw Data Chart: Displays the raw sensor readings over time.
+![20240904-083725_output_data](https://github.com/user-attachments/assets/a0269b89-2115-4720-a6fe-ed9bfbb00c37)
 * Filtered Data Chart: Shows the sensor data after applying the high-pass filter to remove low-frequency noise.
+![20240904-083725_output_noise_db_spl](https://github.com/user-attachments/assets/ba7961c8-ed37-487d-b0db-5d9c294f6df6)
 * FFT Data Chart: Visualizes the frequency components of the signal obtained through FFT analysis.
+![20240904-083725_output_noise_fft](https://github.com/user-attachments/assets/db424aa4-83a3-4ab5-b843-c22a57beb276)
 * dB SPL Chart: Illustrates the sound pressure levels in decibels calculated from the sensor data.
+![20240904-083725_output_noise_fft_db_spl](https://github.com/user-attachments/assets/3aa10483-a413-4146-811a-2fc86af2c755)
 
 These charts are automatically generated and saved as image files in the output directory alongside the CSV file.
