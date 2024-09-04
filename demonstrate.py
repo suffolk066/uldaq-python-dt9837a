@@ -174,7 +174,8 @@ class DataVisualizationCSV:
         return positive_frequencies[indices], fft_magnitude[indices]
         
     def _calculate_db_spl(self, value):
-        return 20 * np.log10(np.abs(value) / self.reference_pressure + self.epsilon)
+        value = np.maximum(np.abs(value), self.epsilon)
+        return 20 * np.log10(value / self.reference_pressure)
     
     def _plot(self, x, y, title, xlabel, ylabel, file_suffix, colors=None, labels=None):
         plt.figure(figsize=(12, 6))
