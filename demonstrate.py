@@ -233,7 +233,7 @@ class DataVisualizationCSV:
 
         # Plot 6: FFT Data in dB SPL
         axs[2, 1].plot(self.limited_frequencies, self.db_spl_magnitude, color='purple', label='Noise (dB SPL)')
-        axs[2, 1].set_title('Noise Sensor Data in Frequency Domain (dB SPL, 0-{self.actual_max_freq} Hz')
+        axs[2, 1].set_title(f'Noise Sensor Data in Frequency Domain (dB SPL, 0-{self.actual_max_freq} Hz)')
         axs[2, 1].set_xlabel('Frequency (Hz)')
         axs[2, 1].set_ylabel('dB SPL Magnitude')
         axs[2, 1].legend()
