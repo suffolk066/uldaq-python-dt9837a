@@ -12,7 +12,7 @@ HIGH_CHANNEL = 1
 
 # Set sensitivity
 ACCELEROMETER_SENSITIVITY = 0.09878
-MICROPHONE_SENSITIVITY = 0.3
+MICROPHONE_SENSITIVITY = 0.03
 
 # sample rate in samples per channel per second.
 SAMPLE_RATE = 1000
@@ -136,17 +136,21 @@ class DataVisualizationCSV:
         self.epsilon = 1e-12  # For error: divide by zero encountered in log10
         self.highpass_cutoff = 1.5 # 1.5 Hz
         self.nyquist_freq = 0.5 * SAMPLE_RATE
-        
+
+        # mV/Unit
+        self.data['channel_0_g'] = self.data['channel_0_value']
+        self.data['channel_1_pa'] = self.data['channel_1_value']   
+
         # Get Acceleration Data
         self._calculate_acceleration()
 
         # Get FFT
-        self.filtered_data = self._apply_highpass_filter(self.data['channel_1_value']) # add highpath filter
+        self.filtered_data = self._apply_highpass_filter(self.data['channel_1_pa'])
         self.limited_frequencies, self.limited_magnitude = self._calculate_fft(self.filtered_data)
         self.actual_max_freq = round(self.limited_frequencies[-1], 1)
 
         # Convert to dB SPL
-        self.db_spl_data = self._calculate_db_spl(self.data['channel_1_value'])
+        self.db_spl_data = self._calculate_db_spl(self.data['channel_1_pa'])
         self.db_spl_magnitude = self._calculate_db_spl(self.limited_magnitude)
 
     def _apply_highpass_filter(self, data):
@@ -181,7 +185,6 @@ class DataVisualizationCSV:
         return 20 * np.log10(value / self.reference_pressure)
     
     def _calculate_acceleration(self):
-        self.data['channel_0_g'] = self.data['channel_0_value'] / ACCELEROMETER_SENSITIVITY
         self.data['channel_0_mps2'] = self.data['channel_0_g'] * 9.81
 
     def plot_all_in_one(self):
@@ -206,8 +209,8 @@ class DataVisualizationCSV:
         axs[0, 1].grid(True)
 
         # Plot 3: Microphone Data over Time
-        axs[1, 0].plot(self.data['seconds'], self.data['channel_1_value'], color='red', label='Microphone (Pa)')
-        axs[1, 0].set_title('Microphone Data Over Time')
+        axs[1, 0].plot(self.data['seconds'], self.data['channel_1_pa'], color='red', label='Microphone (Pa)')
+        axs[1, 0].set_title('Microphone Data Over Time (Pa)')
         axs[1, 0].set_xlabel('Time (Seconds)')
         axs[1, 0].set_ylabel('Microphone Value (Pa)')
         axs[1, 0].legend()
@@ -228,8 +231,13 @@ class DataVisualizationCSV:
         axs[2, 0].legend()
         axs[2, 0].grid(True)
 
-        # Plot 6: Empty
-        axs[2, 1].axis('off')
+        # Plot 6: FFT Data in dB SPL
+        axs[2, 1].plot(self.limited_frequencies, self.db_spl_magnitude, color='purple', label='Noise (dB SPL)')
+        axs[2, 1].set_title('Noise Sensor Data in Frequency Domain (dB SPL, 0-{self.actual_max_freq} Hz')
+        axs[2, 1].set_xlabel('Frequency (Hz)')
+        axs[2, 1].set_ylabel('dB SPL Magnitude')
+        axs[2, 1].legend()
+        axs[2, 1].grid(True)
 
         plt.tight_layout(rect=[0, 0, 1, 0.96])
         file_suffix = 'output_all_in_one'
@@ -277,7 +285,7 @@ class DataVisualizationCSV:
     def plot_microphone_data(self):
         self._plot_single_data(
             self.data['seconds'], 
-            self.data['channel_1_value'], 
+            self.data['channel_1_pa'], 
             'Microphone Values Over Time', 
             'Time (Seconds)', 
             'Microphone Value (Pa)', 
