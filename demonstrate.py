@@ -136,35 +136,23 @@ class DataVisualizationCSV:
         self.epsilon = 1e-12  # For error: divide by zero encountered in log10
         self.highpass_cutoff = 1.5 # 1.5 Hz
         self.nyquist_freq = 0.5 * SAMPLE_RATE
+        self.rms_interval = 0.1
 
         # mV/Unit
-        self.data['channel_0_g'] = self.data['channel_0_value']
-        self.data['channel_1_pa'] = self.data['channel_1_value']   
+        self.data['channel_0_g'] = self.data['channel_0_value'] * ACCELEROMETER_SENSITIVITY
+        self.data['channel_1_pa'] = self.data['channel_1_value'] * MICROPHONE_SENSITIVITY
 
         # Get Acceleration Data
         self._calculate_acceleration()
 
         # Get FFT
-        self.filtered_data = self._apply_highpass_filter(self.data['channel_1_pa'])
-        self.limited_frequencies, self.limited_magnitude = self._calculate_fft(self.filtered_data)
+        self.limited_frequencies, self.limited_magnitude = self._calculate_fft(self.data['channel_1_pa'])
         self.actual_max_freq = round(self.limited_frequencies[-1], 1)
 
         # Convert to dB SPL
-        self.db_spl_data = self._calculate_db_spl(self.data['channel_1_pa'])
-        self.db_spl_magnitude = self._calculate_db_spl(self.limited_magnitude)
+        self.db_spl_data = self._calculate_db_spl_rms(self.data['channel_1_pa'])
+        self.db_spl_magnitude = self._convert_to_db_spl(self.limited_magnitude)
 
-    def _apply_highpass_filter(self, data):
-
-        def butter_highpass():
-            order = 5
-            normal_cutoff = self.highpass_cutoff / self.nyquist_freq
-            b, a = butter(order, normal_cutoff, btype='high', analog=False)
-            return b, a
-
-        b, a = butter_highpass()
-        filtered_data = filtfilt(b, a, data)
-        return filtered_data
-    
     def _calculate_fft(self, data):
         sampling_rate = 1 / np.mean(np.diff(self.data['seconds']))
         n = len(data)
@@ -179,10 +167,36 @@ class DataVisualizationCSV:
         else:
             indices = positive_frequencies <= self.max_freq
         return positive_frequencies[indices], fft_magnitude[indices]
-        
-    def _calculate_db_spl(self, value):
-        value = np.maximum(np.abs(value), self.epsilon)
-        return 20 * np.log10(value / self.reference_pressure)
+    
+    def _calculate_rms(self, data):
+        return np.sqrt(np.mean(data ** 2))
+
+    def _convert_to_db_spl(self, rms_value):
+        return 20 * np.log10(rms_value / self.reference_pressure)
+
+    def _calculate_db_spl_rms(self, value):
+        # Group data by each <second> interval
+        self.data['time_bin'] = (self.data['seconds'] // self.rms_interval).astype(int)
+        db_spl_values = []
+        db_spl_time = []
+
+        grouped = self.data.groupby('time_bin')
+        for _, group in grouped:
+            window_data = group['channel_1_pa'].values
+
+            # Calculate RMS
+            rms_value = self._calculate_rms(window_data)
+
+            # Convert RMS to dB SPL
+            db_spl_value = self._convert_to_db_spl(rms_value)
+            db_spl_values.append(db_spl_value)
+
+            # Calculate time: use the mean time of each group
+            mean_time = group['seconds'].mean()
+            db_spl_time.append(mean_time)
+
+        self.db_spl_data_time = np.array(db_spl_time)
+        return np.array(db_spl_values)
     
     def _calculate_acceleration(self):
         self.data['channel_0_mps2'] = self.data['channel_0_g'] * 9.81
@@ -224,7 +238,7 @@ class DataVisualizationCSV:
         axs[1, 1].grid(True)
 
         # Plot 5: Noise Sensor Data in dB SPL
-        axs[2, 0].plot(self.data['seconds'], self.db_spl_data, color='orange', label='Noise (dB SPL)')
+        axs[2, 0].plot(self.db_spl_data_time, self.db_spl_data, color='orange', label='Noise (dB SPL)')
         axs[2, 0].set_title('Noise Sensor Data (dB SPL)')
         axs[2, 0].set_xlabel('Time (Seconds)')
         axs[2, 0].set_ylabel('dB SPL')
