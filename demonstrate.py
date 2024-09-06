@@ -207,10 +207,10 @@ class DataVisualizationCSV:
         fig.suptitle(f'All Data Plots for {self.timestamp}', fontsize=16)
 
         # Plot 1: Acceleration in G over Time
-        axs[0, 0].plot(self.data['seconds'], self.data['channel_0_g'], color='blue', label='Acceleration (G)')
-        axs[0, 0].set_title('Acceleration Over Time (G)')
+        axs[0, 0].plot(self.data['seconds'], self.data['channel_0_g'], color='blue', label='Acceleration (g)')
+        axs[0, 0].set_title('Acceleration Over Time (g)')
         axs[0, 0].set_xlabel('Time (Seconds)')
-        axs[0, 0].set_ylabel('Acceleration (G)')
+        axs[0, 0].set_ylabel('Acceleration (g)')
         axs[0, 0].legend()
         axs[0, 0].grid(True)
 
@@ -223,10 +223,10 @@ class DataVisualizationCSV:
         axs[0, 1].grid(True)
 
         # Plot 3: Microphone Data over Time
-        axs[1, 0].plot(self.data['seconds'], self.data['channel_1_pa'], color='red', label='Microphone (Pa)')
-        axs[1, 0].set_title('Microphone Data Over Time (Pa)')
+        axs[1, 0].plot(self.data['seconds'], self.data['channel_1_pa'], color='red', label='Sound Presure (Pa)')
+        axs[1, 0].set_title('Sound Presure Over Time (Pa)')
         axs[1, 0].set_xlabel('Time (Seconds)')
-        axs[1, 0].set_ylabel('Microphone Value (Pa)')
+        axs[1, 0].set_ylabel('Sound Presure (Pa)')
         axs[1, 0].legend()
         axs[1, 0].grid(True)
 
@@ -234,22 +234,23 @@ class DataVisualizationCSV:
         axs[1, 1].plot(self.limited_frequencies, self.limited_magnitude, color='purple')
         axs[1, 1].set_title(f'Frequency Spectrum (0-{self.actual_max_freq} Hz)')
         axs[1, 1].set_xlabel('Frequency (Hz)')
-        axs[1, 1].set_ylabel('Magnitude')
+        axs[1, 1].set_ylabel('Amplitude')
+        axs[1, 1].legend()
         axs[1, 1].grid(True)
 
         # Plot 5: Noise Sensor Data in dB SPL
-        axs[2, 0].plot(self.db_spl_data_time, self.db_spl_data, color='orange', label='Noise (dB SPL)')
-        axs[2, 0].set_title('Noise Sensor Data (dB SPL)')
+        axs[2, 0].plot(self.db_spl_data_time, self.db_spl_data, color='orange', label='Sound Presure (dB SPL RMS)')
+        axs[2, 0].set_title('Sound Presure Over Time(dB SPL RMS)')
         axs[2, 0].set_xlabel('Time (Seconds)')
-        axs[2, 0].set_ylabel('dB SPL')
+        axs[2, 0].set_ylabel('Sound Presure (dB SPL RMS)')
         axs[2, 0].legend()
         axs[2, 0].grid(True)
 
         # Plot 6: FFT Data in dB SPL
-        axs[2, 1].plot(self.limited_frequencies, self.db_spl_magnitude, color='purple', label='Noise (dB SPL)')
-        axs[2, 1].set_title(f'Noise Sensor Data in Frequency Domain (dB SPL, 0-{self.actual_max_freq} Hz)')
+        axs[2, 1].plot(self.limited_frequencies, self.db_spl_magnitude, color='purple', label='Amplitude')
+        axs[2, 1].set_title(f'Amplitude in Frequency Domain (dB SPL, 0-{self.actual_max_freq} Hz)')
         axs[2, 1].set_xlabel('Frequency (Hz)')
-        axs[2, 1].set_ylabel('dB SPL Magnitude')
+        axs[2, 1].set_ylabel('Amplitude')
         axs[2, 1].legend()
         axs[2, 1].grid(True)
 
@@ -276,18 +277,18 @@ class DataVisualizationCSV:
         self._plot_single_data(
             self.data['seconds'], 
             self.data['channel_0_g'], 
-            'Acceleration Values Data Over Time', 
+            'Acceleration Data Over Time', 
             'Time (Secodns)', 
-            'Acceleration (G)', 
+            'Acceleration (g)', 
             'output_accelerometer_data',
-            labels='Acceleration (G)'
+            labels='Acceleration (g)'
         )
 
     def plot_acceleration_mps2(self):
         self._plot_single_data(
             self.data['seconds'], 
             self.data['channel_0_mps2'], 
-            'Acceleration Value Data Over Time (m/s²)', 
+            'Acceleration Data Over Time (m/s²)', 
             'Time (Secodns)', 
             'Acceleration (m/s²)', 
             'output_accelerometer_mps2_data',
@@ -300,11 +301,11 @@ class DataVisualizationCSV:
         self._plot_single_data(
             self.data['seconds'], 
             self.data['channel_1_pa'], 
-            'Microphone Values Over Time', 
+            'Sound Presure Over Time', 
             'Time (Seconds)', 
-            'Microphone Value (Pa)', 
+            'Sound Presure (Pa)', 
             'output_microphone_data', 
-            labels='Microphone (Pa)'
+            labels='Sound Presure (Pa)'
         )
 
     def plot_fft(self):
@@ -321,22 +322,22 @@ class DataVisualizationCSV:
         self._plot_single_data(
             self.data['seconds'], 
             self.db_spl_data, 
-            'Noise Sensor Data Over Time (dB SPL)', 
+            'Sound Presure Over Time (dB SPL RMS)', 
             'Time (Seconds)', 
             'dB SPL', 
             'output_microphone_db_spl', 
-            labels='Noise Sensor Data in dB SPL'
+            labels='Sound Presure in dB SPL RMS'
         )
 
     def plot_fft_db_spl(self):
         self._plot_single_data(
             self.limited_frequencies, 
             self.db_spl_magnitude, 
-            f'Noise Sensor Data in Frequency Domain (dB SPL, 0-{self.actual_max_freq} Hz)', 
+            f'Amplitude in Frequency Domain (dB SPL, 0-{self.actual_max_freq} Hz)', 
             'Frequency (Hz)', 
-            'dB SPL Magnitude', 
+            'Amplitude', 
             'output_microphone_fft_db_spl', 
-            labels='Noise Sensor Data in dB SPL'
+            labels='Amplitude in Frequency Domain'
         )
     #endregion
     #endregion
