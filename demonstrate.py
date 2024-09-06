@@ -149,7 +149,7 @@ class DataVisualizationCSV:
         self.actual_max_freq = round(self.limited_frequencies[-1], 1)
 
         # Convert to dB SPL
-        self.db_spl_data = self._calculate_db_spl_rms(self.data['channel_1_pa'])
+        self.db_spl_data = self._calculate_db_spl_rms()
         self.db_spl_magnitude = self._convert_to_db_spl(self.limited_magnitude)
 
     def _calculate_fft(self, data):
@@ -173,7 +173,7 @@ class DataVisualizationCSV:
     def _convert_to_db_spl(self, rms_value):
         return 20 * np.log10(rms_value / self.reference_pressure)
 
-    def _calculate_db_spl_rms(self, value):
+    def _calculate_db_spl_rms(self):
         # Group data by each <second> interval
         self.data['time_bin'] = (self.data['seconds'] // self.rms_interval).astype(int)
         db_spl_values = []
@@ -230,7 +230,7 @@ class DataVisualizationCSV:
         axs[1, 0].grid(True)
 
         # Plot 4: FFT of Microphone Data
-        axs[1, 1].plot(self.limited_frequencies, self.limited_magnitude, color='purple')
+        axs[1, 1].plot(self.limited_frequencies, self.limited_magnitude, color='purple', label='Amplitude')
         axs[1, 1].set_title(f'Frequency Spectrum (0-{self.actual_max_freq} Hz)')
         axs[1, 1].set_xlabel('Frequency (Hz)')
         axs[1, 1].set_ylabel('Amplitude')
